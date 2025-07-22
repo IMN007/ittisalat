@@ -27,7 +27,7 @@ dependencies:
   flutter_webrtc: ^0.14.2 # Behålls på denna version, bör nu vara kompatibel med uppdaterad Firebase
 
   # 📲 Behörighetshantering
-  permission_handler: ^12.0.1 # Behålls som den var
+  permission_handler: ^11.3.1 # Kompatibel med Dart SDK 3.4.0
 
 dev_dependencies:
   flutter_test:
