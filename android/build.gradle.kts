@@ -1,9 +1,3 @@
-// android/build.gradle.kts (Projekt-nivå)
-// Denna fil definierar byggkonfigurationen för hela ditt Android-projekt.
-// Den är skriven i Kotlin DSL.
-
-// Detta block hanterar konfigurationen av plugins som används i hela projektet.
-// DETTA MÅSTE VARA DET FÖRSTA BLOCKET I FILEN.
 pluginManagement {
     repositories {
         // Gradle Plugin Portal är standard för de flesta Gradle-plugins.
@@ -18,7 +12,6 @@ pluginManagement {
     }
 }
 
-// Detta block definierar var Gradle ska söka efter plugins och beroenden som behövs för byggprocessen.
 buildscript {
     repositories {
         google()       // Google:s Maven-repository för Android-specifika beroenden.
@@ -38,7 +31,6 @@ buildscript {
     }
 }
 
-// Konfigurerar repositories fr alla underprojekt i ditt Android-projekt.
 allprojects {
     repositories {
         google()
@@ -46,12 +38,9 @@ allprojects {
     }
 }
 
-// Definierar en ny byggkatalog fr att undvika konflikter med Flutter's byggkatalog.
-// Denna del av koden r specifik fr Flutter-projekt.
 val newBuildDir: Directory = rootProject.layout.buildDirectory.dir("../../build").get()
 rootProject.layout.buildDirectory.value(newBuildDir)
 
-// Konfigurerar underprojekt fr att skerstlla korrekt byggordning.
 subprojects {
     val newSubprojectBuildDir: Directory = newBuildDir.dir(project.name)
     project.layout.buildDirectory.value(newSubprojectBuildDir)
