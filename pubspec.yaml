@@ -32,7 +32,7 @@ dependencies:
 dev_dependencies:
   flutter_test:
     sdk: flutter
-  flutter_lints: ^6.0.0 # Uppdaterad till senaste stabila
+  flutter_lints: ^2.0.0 # Kompatibel med äldre Dart SDK i GitHub Actions
 
 flutter:
   uses-material-design: true
