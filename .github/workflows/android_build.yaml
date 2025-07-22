@@ -1,0 +1,37 @@
+name: Flutter Android Build
+
+on:
+  push:
+    branches:
+      - main # Kör bygget när kod pushas till main-grenen
+  pull_request:
+    branches:
+      - main # Kör bygget när en pull request skapas mot main
+
+jobs:
+  build_android:
+    runs-on: ubuntu-latest # Använd en Linux-miljö för bygget
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4 # Hämtar din kod från repositoryt
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2 # Konfigurerar Flutter SDK
+        with:
+          flutter-version: '3.22.0' # Specifik Flutter-version
+          channel: 'stable' # Använd den stabila kanalen
+
+      - name: Get Flutter dependencies
+        run: flutter pub get # Hämtar alla Dart-paket som appen behöver
+
+      - name: Build Android App Bundle (Debug)
+        run: flutter build appbundle --debug # Bygger Android App Bundle i debug-läge
+        # En App Bundle är det rekommenderade formatet för uppladdning till Google Play Store.
+
+      - name: Upload Artifact
+        uses: actions/upload-artifact@v4 # Laddar upp den byggda filen som en artefakt
+        with:
+          name: android-appbundle-debug # Namn på artefakten
+          path: build/app/outputs/bundle/debug/app-debug.aab # Sökvägen till den byggda App Bundle-filen
+          # Du kommer att kunna ladda ner denna fil från GitHub Actions byggsidan.
