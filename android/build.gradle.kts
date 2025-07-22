@@ -1,28 +1,43 @@
-// android/build.gradle.kts (Projekt-nivå)
-// Denna fil definierar byggkonfigurationen för hela ditt Android-projekt.
-// Den är skriven i Kotlin DSL.
+// android/build.gradle.kts (Projekt-nivÃ¥)
+// Denna fil definierar byggkonfigurationen fÃ¶r hela ditt Android-projekt.
+// Den Ã¤r skriven i Kotlin DSL.
 
-buildscript {
-    // Definierar var Gradle ska söka efter plugins och beroenden som behövs för byggprocessen.
+// Detta block hanterar konfigurationen av plugins som anvÃ¤nds i hela projektet.
+pluginManagement {
     repositories {
-        google()       // Google:s Maven-repository för Android-specifika beroenden.
-        mavenCentral() // Maven Central: Ett stort repository för Java/Kotlin-bibliotek.
+        // Gradle Plugin Portal Ã¤r standard fÃ¶r de flesta Gradle-plugins.
+        gradlePluginPortal()
+        // Google Maven-repository fÃ¶r Android-specifika plugins och beroenden.
+        google()
+        // Maven Central Ã¤r ett stort repository fÃ¶r Java/Kotlin-bibliotek.
+        mavenCentral()
+        // Detta Ã¤r den viktiga raden fÃ¶r Flutter-plugins.
+        // Den pekar pÃ¥ den lokala katalogen dÃ¤r Flutter genererar plugin-registreringen.
+        maven { url = uri("../.flutter-plugins/android/") }
     }
-    // Definierar beroenden som behövs för att bygga projektet självt (t.ex. Gradle-plugins).
+}
+
+// Detta block definierar var Gradle ska sÃ¶ka efter plugins och beroenden som behÃ¶vs fÃ¶r byggprocessen.
+buildscript {
+    repositories {
+        google()       // Google:s Maven-repository fÃ¶r Android-specifika beroenden.
+        mavenCentral() // Maven Central: Ett stort repository fÃ¶r Java/Kotlin-bibliotek.
+    }
+    // Definierar beroenden som behÃ¶vs fÃ¶r att bygga projektet sjÃ¤lvt (t.ex. Gradle-plugins).
     dependencies {
-        // Firebase Google Services plugin. Denna är nödvändig för att din app ska kunna använda Firebase.
-        // VIKTIGT: Använd den version som Firebase Console rekommenderar (t.ex. 4.4.2).
+        // Firebase Google Services plugin. Denna Ã¤r nÃ¶dvÃ¤ndig fÃ¶r att din app ska kunna anvÃ¤nda Firebase.
+        // VIKTIGT: AnvÃ¤nd den version som Firebase Console rekommenderar (t.ex. 4.4.2).
         classpath("com.google.gms:google-services:4.4.2")
 
-        // Dessa är standardplugins för Android Gradle Plugin och Kotlin Gradle Plugin.
-        // De bör redan finnas i din fil, men se till att versionerna matchar ditt projekt.
+        // Dessa Ã¤r standardplugins fÃ¶r Android Gradle Plugin och Kotlin Gradle Plugin.
+        // De bÃ¶r redan finnas i din fil, men se till att versionerna matchar ditt projekt.
         // Om de saknas, uncommenta dem och justera versionerna vid behov.
         // classpath("com.android.tools.build:gradle:8.1.2") // Exempel, anpassa till din version
         // classpath("org.jetbrains.kotlin:kotlin-gradle-plugin:1.8.0") // Exempel, anpassa till din version
     }
 }
 
-// Konfigurerar repositories för alla underprojekt i ditt Android-projekt.
+// Konfigurerar repositories fÃ¶r alla underprojekt i ditt Android-projekt.
 allprojects {
     repositories {
         google()
@@ -30,22 +45,22 @@ allprojects {
     }
 }
 
-// Definierar en ny byggkatalog för att undvika konflikter med Flutter's byggkatalog.
-// Denna del av koden är specifik för Flutter-projekt.
+// Definierar en ny byggkatalog fÃ¶r att undvika konflikter med Flutter's byggkatalog.
+// Denna del av koden Ã¤r specifik fÃ¶r Flutter-projekt.
 val newBuildDir: Directory = rootProject.layout.buildDirectory.dir("../../build").get()
 rootProject.layout.buildDirectory.value(newBuildDir)
 
-// Konfigurerar underprojekt för att säkerställa korrekt byggordning.
+// Konfigurerar underprojekt fÃ¶r att sÃ¤kerstÃ¤lla korrekt byggordning.
 subprojects {
     val newSubprojectBuildDir: Directory = newBuildDir.dir(project.name)
     project.layout.buildDirectory.value(newSubprojectBuildDir)
 }
 subprojects {
-    // Säkerställer att ':app' modulen utvärderas innan andra underprojekt.
+    // SÃ¤kerstÃ¤ller att ':app' modulen utvÃ¤rderas innan andra underprojekt.
     project.evaluationDependsOn(":app")
 }
 
-// Definierar en 'clean'-uppgift för att rensa byggkatalogerna.
+// Definierar en 'clean'-uppgift fÃ¶r att rensa byggkatalogerna.
 tasks.register<Delete>("clean") {
     delete(rootProject.layout.buildDirectory)
 }
