@@ -1,36 +1,53 @@
 import 'package:flutter/material.dart';
+import 'package:firebase_core/firebase_core.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:ittisal2/auth_screen.dart'; // Importerar den nya autentiseringsskärmen
+// import 'firebase_options.dart'; // Uncommenta denna rad om du har en firebase_options.dart-fil
 
-void main() {
+void main() async {
+  // Säkerställer att Flutter-bindningarna är initialiserade innan Firebase används.
+  WidgetsFlutterBinding.ensureInitialized();
+  // Initialiserar Firebase för appen.
+  await Firebase.initializeApp(
+    // Om du har en firebase_options.dart-fil (genererad av FlutterFire CLI),
+    // uncommenta raden nedan för att använda plattformsspecifika alternativ.
+    // options: DefaultFirebaseOptions.currentPlatform,
+  );
+  // Kör Flutter-appen.
   runApp(const MyApp());
 }
 
 class MyApp extends StatelessWidget {
   const MyApp({super.key});
 
-  // This widget is the root of your application.
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Flutter Demo',
+      title: 'Ittisal', // Appens titel
       theme: ThemeData(
-        // This is the theme of your application.
-        //
-        // TRY THIS: Try running your application with "flutter run". You'll see
-        // the application has a purple toolbar. Then, without quitting the app,
-        // try changing the seedColor in the colorScheme below to Colors.green
-        // and then invoke "hot reload" (save your changes or press the "hot
-        // reload" button in a Flutter-supported IDE, or press "r" if you used
-        // the command line to start the app).
-        //
-        // Notice that the counter didn't reset back to zero; the application
-        // state is not lost during the reload. To reset the state, use hot
-        // restart instead.
-        //
-        // This works for code too, not just values: Most code changes can be
-        // tested with just a hot reload.
-        colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
+        primarySwatch: Colors.blue, // Appens primära färgtema
+        visualDensity: VisualDensity.adaptivePlatformDensity, // Anpassar densiteten för olika plattformar
       ),
-      home: const MyHomePage(title: 'Flutter Demo Home Page'),
+      // Använder en StreamBuilder för att lyssna på ändringar i Firebase Authentication-tillståndet.
+      // Detta gör att appen automatiskt växlar mellan inloggningsskärm och huvudskärm.
+      home: StreamBuilder<User?>(
+        stream: FirebaseAuth.instance.authStateChanges(), // Lyssnar på användarens inloggningsstatus
+        builder: (context, snapshot) {
+          // Om anslutningen väntar (t.ex. vid appstart medan Firebase kontrollerar inloggning).
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return const Center(child: CircularProgressIndicator()); // Visar en laddningsindikator.
+          }
+          // Om det finns data (dvs. en användare är inloggad).
+          if (snapshot.hasData) {
+            // Användaren är inloggad, visa huvudskärmen (MyHomePage).
+            return const MyHomePage(title: 'ITTISASL _ KONTAKTER');
+          } else {
+            // Användaren är inte inloggad, visa autentiseringsskärmen (AuthScreen).
+            return const AuthScreen();
+          }
+        },
+      ),
     );
   }
 }
@@ -38,85 +55,271 @@ class MyApp extends StatelessWidget {
 class MyHomePage extends StatefulWidget {
   const MyHomePage({super.key, required this.title});
 
-  // This widget is the home page of your application. It is stateful, meaning
-  // that it has a State object (defined below) that contains fields that affect
-  // how it looks.
-
-  // This class is the configuration for the state. It holds the values (in this
-  // case the title) provided by the parent (in this case the App widget) and
-  // used by the build method of the State. Fields in a Widget subclass are
-  // always marked "final".
-
-  final String title;
+  final String title; // Titeln för huvudskärmen
 
   @override
   State<MyHomePage> createState() => _MyHomePageState();
 }
 
 class _MyHomePageState extends State<MyHomePage> {
-  int _counter = 0;
+  User? _currentUser; // Den för närvarande inloggade Firebase-användaren
+  String _currentUserName = 'Laddar namn...'; // Visningsnamnet för den inloggade användaren
 
-  void _incrementCounter() {
-    setState(() {
-      // This call to setState tells the Flutter framework that something has
-      // changed in this State, which causes it to rerun the build method below
-      // so that the display can reflect the updated values. If we changed
-      // _counter without calling setState(), then the build method would not be
-      // called again, and so nothing would appear to happen.
-      _counter++;
+  @override
+  void initState() {
+    super.initState();
+    // Lyssnar på ändringar i inloggningsstatus för att uppdatera UI.
+    FirebaseAuth.instance.authStateChanges().listen((user) {
+      if (user != null) {
+        _currentUser = user; // Uppdaterar den aktuella användaren
+        _fetchCurrentUserName(); // Hämtar användarens namn
+      } else {
+        setState(() {
+          _currentUser = null; // Ställer in användaren som null om utloggad
+          _currentUserName = 'Inte inloggad'; // Uppdaterar visningsnamnet
+        });
+      }
     });
+    // Hämtar den initiala användaren vid widgetens start.
+    _currentUser = FirebaseAuth.instance.currentUser;
+    _fetchCurrentUserName();
+  }
+
+  // Funktion för att hämta den inloggade användarens namn från Firebase eller Firestore.
+  Future<void> _fetchCurrentUserName() async {
+    if (_currentUser != null) {
+      // Försöker först använda display name från Firebase Authentication (om det finns).
+      if (_currentUser!.displayName != null && _currentUser!.displayName!.isNotEmpty) {
+        setState(() {
+          _currentUserName = _currentUser!.displayName!;
+        });
+      } else {
+        // Om display name saknas, försöker hämta namn från Firestore-profil.
+        // Antar att användarprofiler lagras i en 'users' samling med UID som dokument-ID.
+        try {
+          DocumentSnapshot userDoc = await FirebaseFirestore.instance
+              .collection('users')
+              .doc(_currentUser!.uid)
+              .get();
+
+          if (userDoc.exists && userDoc.data() != null) {
+            Map<String, dynamic> userData = userDoc.data() as Map<String, dynamic>;
+            // Prioriterar 'name'-fältet från Firestore, annars 'email'-fältet.
+            if (userData.containsKey('name') && userData['name'] != null) {
+              setState(() {
+                _currentUserName = userData['name'];
+              });
+            } else if (_currentUser!.email != null) {
+              setState(() {
+                _currentUserName = _currentUser!.email!;
+              });
+            }
+          } else if (_currentUser!.email != null) {
+            setState(() {
+              _currentUserName = _currentUser!.email!;
+            });
+          }
+        } catch (e) {
+          // Loggar fel vid hämtning av användarnamn från Firestore.
+          print("Fel vid hämtning av användarnamn från Firestore: $e");
+          // Fallback till e-post om Firestore-hämtning misslyckas.
+          if (_currentUser!.email != null) {
+            setState(() {
+              _currentUserName = _currentUser!.email!;
+            });
+          }
+        }
+      }
+    } else {
+      // Om ingen användare är inloggad.
+      setState(() {
+        _currentUserName = 'Inte inloggad';
+      });
+    }
+  }
+
+  // Funktion för att radera en kontakt från Firestore.
+  Future<void> _deleteContact(String contactUid, String contactName) async {
+    // Visar en bekräftelsedialog för användaren.
+    return showDialog<void>(
+      context: context,
+      barrierDismissible: false, // Användaren måste trycka på en knapp för att stänga.
+      builder: (BuildContext dialogContext) {
+        return AlertDialog(
+          title: const Text('Radera kontakt?'),
+          content: Text('Är du säker på att du vill radera $contactName från dina kontakter?'),
+          actions: <Widget>[
+            TextButton(
+              child: const Text('Avbryt'),
+              onPressed: () {
+                Navigator.of(dialogContext).pop(); // Stänger dialogen.
+              },
+            ),
+            TextButton(
+              child: const Text('Radera'),
+              onPressed: () async {
+                try {
+                  // Raderar dokumentet för kontakten från 'users' samlingen i Firestore.
+                  await FirebaseFirestore.instance
+                      .collection('users')
+                      .doc(contactUid)
+                      .delete();
+                  // Visar ett meddelande om att raderingen lyckades.
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text('$contactName raderad framgångsrikt.')),
+                  );
+                } catch (e) {
+                  // Visar ett felmeddelande om raderingen misslyckades.
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text('Kunde inte radera $contactName: $e')),
+                  );
+                } finally {
+                  Navigator.of(dialogContext).pop(); // Stänger dialogen.
+                }
+              },
+            ),
+          ],
+        );
+      },
+    );
   }
 
   @override
   Widget build(BuildContext context) {
-    // This method is rerun every time setState is called, for instance as done
-    // by the _incrementCounter method above.
-    //
-    // The Flutter framework has been optimized to make rerunning build methods
-    // fast, so that you can just rebuild anything that needs updating rather
-    // than having to individually change instances of widgets.
     return Scaffold(
       appBar: AppBar(
-        // TRY THIS: Try changing the color here to a specific color (to
-        // Colors.amber, perhaps?) and trigger a hot reload to see the AppBar
-        // change color while the other colors stay the same.
-        backgroundColor: Theme.of(context).colorScheme.inversePrimary,
-        // Here we take the value from the MyHomePage object that was created by
-        // the App.build method, and use it to set our appbar title.
-        title: Text(widget.title),
+        title: Text(widget.title), // Appbarens titel
+        backgroundColor: Theme.of(context).primaryColor, // Bakgrundsfärg för appbaren
+        elevation: 4, // Skugga under appbaren
+        actions: [ // Åtgärder/knappar i appbaren
+          IconButton(
+            icon: const Icon(Icons.logout, color: Colors.white), // Ikon för utloggning
+            tooltip: 'Logga ut', // Verktygstips vid hovring
+            onPressed: () async {
+              await FirebaseAuth.instance.signOut(); // Loggar ut användaren från Firebase
+              // Visar ett meddelande om utloggning.
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text('Du är utloggad.')),
+              );
+            },
+          ),
+        ],
       ),
-      body: Center(
-        // Center is a layout widget. It takes a single child and positions it
-        // in the middle of the parent.
-        child: Column(
-          // Column is also a layout widget. It takes a list of children and
-          // arranges them vertically. By default, it sizes itself to fit its
-          // children horizontally, and tries to be as tall as its parent.
-          //
-          // Column has various properties to control how it sizes itself and
-          // how it positions its children. Here we use mainAxisAlignment to
-          // center the children vertically; the main axis here is the vertical
-          // axis because Columns are vertical (the cross axis would be
-          // horizontal).
-          //
-          // TRY THIS: Invoke "debug painting" (choose the "Toggle Debug Paint"
-          // action in the IDE, or press "p" in the console), to see the
-          // wireframe for each widget.
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: <Widget>[
-            const Text('You have pushed the button this many times:'),
-            Text(
-              '$_counter',
-              style: Theme.of(context).textTheme.headlineMedium,
+      body: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Visar den inloggade användarens namn.
+          Padding(
+            padding: const EdgeInsets.all(16.0),
+            child: Text(
+              'Inloggad som: $_currentUserName',
+              style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.blueGrey),
             ),
-          ],
-        ),
+          ),
+          const Divider(height: 1, thickness: 1, indent: 16, endIndent: 16), // En avdelare
+          Expanded(
+            child: StreamBuilder<QuerySnapshot>(
+              // Hämtar alla användare från 'users' samlingen i Firestore i realtid.
+              stream: FirebaseFirestore.instance.collection('users').snapshots(),
+              builder: (context, snapshot) {
+                // Om det finns ett fel vid laddning av kontakter.
+                if (snapshot.hasError) {
+                  return Center(child: Text('Fel vid laddning av kontakter: ${snapshot.error}'));
+                }
+                // Om anslutningen väntar på data.
+                if (snapshot.connectionState == ConnectionState.waiting) {
+                  return const Center(child: CircularProgressIndicator()); // Visar laddningsindikator.
+                }
+
+                // Filtrerar bort den nuvarande inloggade användaren från kontaktlistan.
+                final contacts = snapshot.data!.docs.where((doc) => doc.id != _currentUser?.uid).toList();
+
+                // Om inga andra kontakter hittades.
+                if (contacts.isEmpty) {
+                  return const Center(
+                    child: Padding(
+                      padding: EdgeInsets.all(16.0),
+                      child: Text(
+                        'Inga andra kontakter hittades. Lägg till nya eller se till att andra användare är registrerade.',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(fontSize: 16, color: Colors.grey),
+                      ),
+                    ),
+                  );
+                }
+
+                // Bygger en lista med kontakter.
+                return ListView.builder(
+                  itemCount: contacts.length,
+                  itemBuilder: (context, index) {
+                    final contact = contacts[index];
+                    final contactData = contact.data() as Map<String, dynamic>;
+                    // Försöker hämta 'name', annars 'email', annars 'Okänt namn'.
+                    final contactName = contactData['name'] ?? contactData['email'] ?? 'Okänt namn';
+                    final contactUid = contact.id; // Kontaktens unika ID (UID)
+
+                    return Card(
+                      margin: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 4.0),
+                      elevation: 2, // Lägger till skugga för korten
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)), // Rundade hörn
+                      child: ListTile(
+                        leading: CircleAvatar(
+                          backgroundColor: Theme.of(context).primaryColor.withOpacity(0.2),
+                          child: Icon(Icons.person, color: Theme.of(context).primaryColor),
+                        ),
+                        title: Text(
+                          contactName,
+                          style: const TextStyle(fontWeight: FontWeight.w500),
+                        ),
+                        subtitle: Text(contactData['email'] ?? 'Ingen e-post'), // Visar e-post om namn saknas
+                        trailing: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            // Knapp för att ringa (exempel, funktion ej implementerad ännu)
+                            IconButton(
+                              icon: const Icon(Icons.call, color: Colors.green),
+                              tooltip: 'Ring ${contactName}',
+                              onPressed: () {
+                                // TODO: Implementera samtalsfunktionalitet här
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(content: Text('Ringer $contactName... (Funktion ej implementerad)')),
+                                );
+                              },
+                            ),
+                            // Knapp för att radera kontakt
+                            IconButton(
+                              icon: const Icon(Icons.delete, color: Colors.red),
+                              tooltip: 'Radera ${contactName}',
+                              onPressed: () => _deleteContact(contactUid, contactName),
+                            ),
+                          ],
+                        ),
+                        onTap: () {
+                          // TODO: Implementera chatt- eller profilvy här
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(content: Text('Öppnar chatt med $contactName... (Funktion ej implementerad)')),
+                          );
+                        },
+                      ),
+                    );
+                  },
+                );
+              },
+            ),
+          ),
+        ],
       ),
+      // Flytande åtgärdsknapp för att lägga till ny kontakt (funktion ej implementerad ännu)
       floatingActionButton: FloatingActionButton(
-        onPressed: _incrementCounter,
-        tooltip: 'Increment',
-        child: const Icon(Icons.add),
-      ), // This trailing comma makes auto-formatting nicer for build methods.
+        onPressed: () {
+          // TODO: Implementera funktionalitet för att lägga till ny kontakt
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Lägg till ny kontakt (funktion ej implementerad)')),
+          );
+        },
+        backgroundColor: Theme.of(context).primaryColor,
+        child: const Icon(Icons.add, color: Colors.white),
+      ),
     );
   }
 }

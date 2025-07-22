@@ -1,0 +1,67 @@
+{
+  "project_info": {
+    "project_number": "18179821949",
+    "project_id": "ittisal2",
+    "storage_bucket": "ittisal2.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:18179821949:android:874d5ccce3447d9ab7bc14",
+        "android_client_info": {
+          "package_name": "com.example.ittisal2"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyD0XPWzKIherpO39kbzxPZElR2bifLpRJU"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:18179821949:android:2efa52134281f6a2b7bc14",
+        "android_client_info": {
+          "package_name": "com.example.ittisal2_new"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyD0XPWzKIherpO39kbzxPZElR2bifLpRJU"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:18179821949:android:6e30cbc4bfaa2332b7bc14",
+        "android_client_info": {
+          "package_name": "com.idris.ittisal2"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyD0XPWzKIherpO39kbzxPZElR2bifLpRJU"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
